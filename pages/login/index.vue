@@ -96,6 +96,7 @@ const handleLogin = async () => {
   try {
     await login(email.value, password.value);
     router.push("/");
+    window.location.reload()
   } catch (error: any) {
     errorMessage.value =
       error.code === "auth/invalid-email"

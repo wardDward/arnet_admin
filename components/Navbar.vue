@@ -67,6 +67,7 @@ const handleLogout = async () => {
   try {
     await logout();
     router.push("/login");
+    window.location.reload()
     console.log("User logged out successfully");
   } catch (error) {
     console.error("Logout failed:", error);
