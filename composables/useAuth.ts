@@ -41,8 +41,8 @@ export const useAuth = () => {
   const register = async (
     email: string,
     password: string,
-    firstName: string,
-    lastName: string
+    firstname: string,
+    lastname: string
   ) => {
     if (!email || !isValidEmail(email)) {
       console.error("Invalid email format");
@@ -57,13 +57,13 @@ export const useAuth = () => {
       );
       user.value = userCredential.user;
 
-      await setDoc(doc(db, "users", user.value.uid), {
-        firstName,
-        lastName,
+      await setDoc(doc(db, "profile", user.value.uid), {
+        firstname,
+        lastname,
         email,
       });
 
-      userData.value = { firstName, lastName, email };
+      userData.value = { firstname, lastname, email };
       return user.value;
     } catch (error: any) {
       console.error("Registration failed:", error.message);
@@ -73,11 +73,16 @@ export const useAuth = () => {
 
   const fetchUsers = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      users.value = querySnapshot.docs.map((doc) => ({
+      const querySnapshot = await getDocs(collection(db, "profile"));
+      users.value = querySnapshot.docs.map((doc) => {
+        const userData = doc.data();
+      return {
         id: doc.id,
-        ...doc.data(),
-      }));
+        firstname: userData.firstname || "N/A",
+        lastname: userData.lastname || "N/A",
+        email: userData.email || "N/A",
+      };
+      });
 
       console.log("Fetched users:", users.value);
     } catch (error: any) {
@@ -89,7 +94,7 @@ export const useAuth = () => {
     onAuthStateChanged(auth, async (firebaseUser) => {
       user.value = firebaseUser;
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+        const userDoc = await getDoc(doc(db, "profile", firebaseUser.uid));
         if (userDoc.exists()) {
           userData.value = userDoc.data();
         }
@@ -102,7 +107,7 @@ export const useAuth = () => {
   
   const deleteUser = async (userId: string) => {
     try {
-      await deleteDoc(doc(db, "users", userId));
+      await deleteDoc(doc(db, "profile", userId));
       users.value = users.value.filter(user => user.id !== userId); // Update UI
     } catch (error: any) {
       console.error("Error deleting user:", error.message);
