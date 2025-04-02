@@ -59,7 +59,7 @@ const { user } = useAuthUser();
 const { logout } = useAuth();
 const router = useRouter();
 
-const tabs = ["Accounts", "Lessons", "Exercises"];
+const tabs = ["Accounts", "Lessons"];
 
 const toggleMenu = ref(false);
 
@@ -67,6 +67,7 @@ const handleLogout = async () => {
   try {
     await logout();
     router.push("/login");
+    window.location.reload()
     console.log("User logged out successfully");
   } catch (error) {
     console.error("Logout failed:", error);
