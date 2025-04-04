@@ -40,6 +40,7 @@
             {{ lesson.title }}
           </option>
         </select>
+        <input v-model="sublessonVideolink" class="w-full p-2 border rounded mb-2" placeholder="Video Link"/>
         <textarea v-model="sublessonContent" class="w-full p-2 border rounded mb-2" rows="15" placeholder="Sublesson Content"></textarea>
         <button type="submit" class="gradient w-full rounded-md text-lg font-[300] tracking-wide px-2 mt-5">
           Add
@@ -58,12 +59,38 @@
       <hr />
       <form class="p-4" @submit.prevent="updateSublesson">
         <input v-model="editSublesson.title" class="w-full p-2 border rounded mb-2" required />
+        <input v-model="editSublesson.videolink" class="w-full p-2 border rounded mb-2" placeholder="Video Link"/>
         <textarea v-model="editSublesson.text" class="w-full p-2 border rounded mb-2" rows="17"></textarea>
         <button type="submit" class="gradient w-full rounded-md text-lg font-[300] tracking-wide px-2 mt-5">
           Update
         </button>
       </form>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div
+      v-if="showDeleteModal"
+      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[999999] cursor-pointer bg-white w-full md:w-[45%] lg:w-[45%] xl:w-[35%] p-4 rounded-lg shadow-lg"
+    >
+      <div class="text-center text-lg font-semibold tracking-wide mb-4 text-black">
+        Are you sure you want to delete <b>{{ sublessonToDelete?.title }}</b>?
+      </div>
+      <div class="flex justify-center gap-4">
+        <button
+          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+          @click="confirmDelete"
+        >
+          Yes, Delete
+        </button>
+        <button
+          class="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded"
+          @click="cancelDelete"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
     <!-- Lessons Table -->
     <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
       <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -88,7 +115,7 @@
             <button @click="openEditModal(sublesson)" class="px-4 py-2 text-white bg-yellow-500 rounded hover:bg-yellow-600">
               Edit
             </button>
-            <button @click="deleteSublesson(sublesson.id, sublesson.parentId)" class="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600">
+            <button @click="promptDeleteSublesson(sublesson)" class="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600">
               Delete
             </button>
           </td>
@@ -96,6 +123,16 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Global Loading Spinner -->
+<div v-if="isLoading" class="fixed inset-0 z-[9999999] bg-black/40 flex items-center justify-center">
+  <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+    <path class="opacity-75" fill="currentColor"
+      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+  </svg>
+</div>
+
 </template>
 
 <script lang="ts" setup>
@@ -111,38 +148,46 @@ const sublessons = ref<any[]>([]);
 const sublessonTitle = ref("");
 const parentLessonId = ref("");
 const sublessonContent = ref("");
-const editSublesson = ref<any>({ id: "", title: "", text: "", parentId: "" });
+const sublessonVideolink = ref(""); // Declare the videolink variable
+const editSublesson = ref<any>({ id: "", title: "", videolink: "", text: "", parentId: "" });
+const isLoading = ref(false);
 
 // Fetch Lessons and Sublessons
+onMounted(async () => {
+  isLoading.value = true;
+  await fetchLessons();
+  isLoading.value = false;
+});
+
 const fetchLessons = async () => {
   try {
     const lessonsSnapshot = await getDocs(collection(db, "lessons"));
-    let allLessons: any[] = [];
-    let allSublessons: any[] = [];
+    const lessonList: any[] = lessonsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-    for (const lessonDoc of lessonsSnapshot.docs) {
-      const lessonData = lessonDoc.data();
-      const lessonId = lessonDoc.id;
-      allLessons.push({ id: lessonId, ...lessonData });
+    lessons.value = lessonList;
 
-      const sublessonsSnapshot = await getDocs(collection(db, "lessons", lessonId, "sublessons"));
-      sublessonsSnapshot.forEach((subDoc) => {
-        allSublessons.push({
-          id: subDoc.id,
-          title: subDoc.data().title,
-          lessonTitle: lessonData.title,
-          text: subDoc.data().text,
-          parentId: lessonId,
-        });
-      });
-    }
+    const sublessonPromises = lessonList.map(async lesson => {
+      const subSnap = await getDocs(collection(db, "lessons", lesson.id, "sublessons"));
+      return subSnap.docs.map(doc => ({
+        id: doc.id,
+        title: doc.data().title,
+        videolink: doc.data().videolink,
+        text: doc.data().text,
+        parentId: lesson.id,
+        lessonTitle: lesson.title,
+      }));
+    });
 
-    lessons.value = allLessons;
-    sublessons.value = allSublessons;
+    const resolved = await Promise.all(sublessonPromises);
+    sublessons.value = resolved.flat();
   } catch (error) {
-    console.error("Error fetching lessons:", error);
+    console.error("Error fetching lessons or sublessons:", error);
   }
 };
+
 
 import { getDocs, setDoc, doc, collection } from "firebase/firestore";
 
@@ -160,7 +205,12 @@ const addSublesson = async () => {
     const baseId = parentLessonId.value.replace(/\.0$/, ""); 
     const newId = `${baseId}.${sublessonCount + 1}`;
 
-    const newSublesson = { id: newId, title: sublessonTitle.value, text: sublessonContent.value };
+    const newSublesson = {
+      id: newId,
+      title: sublessonTitle.value,
+      text: sublessonContent.value,
+      videolink: sublessonVideolink.value || "", // Add videolink here
+    };
 
     // Use setDoc with the generated ID
     const subDocRef = doc(db, "lessons", parentLessonId.value, "sublessons", newId);
@@ -170,6 +220,7 @@ const addSublesson = async () => {
       id: newId,
       title: sublessonTitle.value,
       text: sublessonContent.value,
+      videolink: sublessonVideolink.value || "", // Add videolink here
       lessonTitle: lessons.value.find(lesson => lesson.id === parentLessonId.value)?.title || "Unknown",
       parentId: parentLessonId.value,
     });
@@ -191,9 +242,10 @@ const openEditModal = (sublesson: any) => {
 const updateSublesson = async () => {
   try {
     await updateDoc(doc(db, "lessons", editSublesson.value.parentId, "sublessons", editSublesson.value.id), {
-      title: editSublesson.value.title,
-      text: editSublesson.value.text,
-    });
+    title: editSublesson.value.title,
+    text: editSublesson.value.text,
+    videolink: editSublesson.value.videolink || "", // Optional fallback
+  });
 
     const index = sublessons.value.findIndex(sub => sub.id === editSublesson.value.id);
     sublessons.value[index] = { ...editSublesson.value };
@@ -203,6 +255,37 @@ const updateSublesson = async () => {
     console.error("Error updating sublesson:", error);
   }
 };
+
+// Delete Confirmation State
+const showDeleteModal = ref(false);
+const sublessonToDelete = ref<any>(null);
+
+// Open Delete Modal
+const promptDeleteSublesson = (sublesson: any) => {
+  sublessonToDelete.value = sublesson;
+  showDeleteModal.value = true;
+};
+
+// Confirm Delete
+const confirmDelete = async () => {
+  if (!sublessonToDelete.value) return;
+  try {
+    await deleteDoc(doc(db, "lessons", sublessonToDelete.value.parentId, "sublessons", sublessonToDelete.value.id));
+    sublessons.value = sublessons.value.filter(sub => sub.id !== sublessonToDelete.value.id);
+  } catch (error) {
+    console.error("Error deleting sublesson:", error);
+  } finally {
+    showDeleteModal.value = false;
+    sublessonToDelete.value = null;
+  }
+};
+
+// Cancel Delete
+const cancelDelete = () => {
+  showDeleteModal.value = false;
+  sublessonToDelete.value = null;
+};
+
 
 // Delete Sublesson
 const deleteSublesson = async (sublessonId: string, parentLessonId: string) => {
