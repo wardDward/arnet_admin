@@ -1,28 +1,28 @@
 <template>
-  <div class="p-6 bg-gray-100">
-    <div v-if="sublesson" class="bg-white p-6 rounded-lg shadow-md w-full max-w-lg">
+  <div class="p-4 sm:p-6 bg-gray-100">
+    <div v-if="sublesson" class="bg-white p-6 rounded-lg shadow-md w-full max-w-full lg:max-w-[70%] mx-auto">
       <!-- Title Section -->
-      <div class="flex items-center justify-center mb-4">
-        <h2 class="text-2xl font-semibold">Create Exercise for</h2> 
-        <span class="text-2xl font-bold mx-2">{{ sublesson.title }}</span>
+      <div class="flex mb-4 flex-col sm:flex-row">
+        <h2 class="text-xl sm:text-2xl font-semibold mb-2 sm:mb-0">Create Exercise for</h2>
+        <span class="text-xl sm:text-2xl font-bold text-center sm:text-left mx-2">{{ sublesson.title }}</span>
       </div>
 
       <!-- Tab Buttons -->
-      <div class="flex justify-between gap-4 mb-6">
+      <div class="flex flex-wrap gap-4 mb-6 justify-between sm:justify-start">
         <button
-          class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors w-full"
+          class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
           @click="selectedTab = 'trueOrFalse'"
         >
           True or False
         </button>
         <button
-          class="bg-yellow-500 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors w-full"
+          class="bg-yellow-500 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors w-full sm:w-auto"
           @click="selectedTab = 'sequence'"
         >
           Sequence
         </button>
         <button
-          class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors w-full"
+          class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors w-full sm:w-auto"
           @click="selectedTab = 'multipleChoice'"
         >
           Multiple Choice
@@ -41,7 +41,7 @@
       </div>
     </div>
 
-    <div v-else class="text-xl text-gray-500">Loading...</div>
+    <div v-else class="text-xl text-gray-500 text-center">Loading...</div>
   </div>
 </template>
 
@@ -59,7 +59,7 @@ import MultipleChoice from "@/components/exercise_compo/MultipleChoice.vue";
 const route = useRoute();
 const sublesson = ref<any>(null);
 const isLoading = ref(false);
-const selectedTab = ref(null);
+const selectedTab = ref("trueOrFalse");
 
 onMounted(async () => {
   const sublessonId = route.params.id;
@@ -100,3 +100,7 @@ const fetchSublessonById = async (sublessonId: string) => {
   }
 };
 </script>
+
+<style scoped>
+
+</style>
