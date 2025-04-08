@@ -9,10 +9,9 @@
 
         <!-- Question Input -->
         <div class="mb-4">
-          <label for="question" class="block text-lg font-medium mb-2">Question</label>
+          <label class="block text-lg font-medium mb-2">Question</label>
           <input
             v-model="question.text"
-            id="question"
             type="text"
             class="w-full p-2 border border-gray-300 rounded-md"
             placeholder="Enter your question"
@@ -21,45 +20,32 @@
 
         <!-- Choices Input -->
         <div class="mb-4">
-          <label for="choices" class="block text-lg font-medium mb-2">Choices</label>
+          <label class="block text-lg font-medium mb-2">Options</label>
           <div class="space-y-2">
-            <!-- Dynamic choice inputs -->
             <div v-for="(choice, choiceIndex) in question.choices" :key="choiceIndex" class="flex items-center space-x-2">
-              <span class="text-lg font-medium">Choice {{ choiceIndex + 1 }}:</span>
+              <span class="text-lg font-medium">{{ choiceIndex + 1 }}:</span>
               <input
                 v-model="question.choices[choiceIndex]"
-                :id="'choice' + (choiceIndex + 1)"
                 type="text"
                 class="w-full p-2 border border-gray-300 rounded-md"
-                :placeholder="'Enter choice ' + (choiceIndex + 1)"
+                :placeholder="'Enter option ' + (choiceIndex + 1)"
               />
             </div>
           </div>
         </div>
 
-        <!-- Correct Answer Input -->
+        <!-- Correct Answer -->
         <div class="mb-4">
-          <label for="correctAnswer" class="block text-lg font-medium mb-2">Correct Answer</label>
+          <label class="block text-lg font-medium mb-2">Correct Answer</label>
           <select
             v-model="question.correctAnswer"
-            id="correctAnswer"
             class="w-full p-2 border border-gray-300 rounded-md"
           >
             <option v-for="(choice, choiceIndex) in question.choices" :key="choiceIndex" :value="choiceIndex">
-              {{ String.fromCharCode(65 + choiceIndex) }} <!-- Converts index to A, B, C, D, etc -->
+              {{ choiceIndex + 1 }}
             </option>
           </select>
         </div>
-      </div>
-
-      <!-- Add New Question Button -->
-      <div class="mb-6">
-        <button
-          @click="addQuestion"
-          class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors w-full"
-        >
-          Add New Question
-        </button>
       </div>
 
       <!-- Submit Button -->
@@ -74,32 +60,94 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import { db } from "@/utils/firebase";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { useRoute } from "vue-router";
 
-// Define the structure for each multiple-choice question
-const questions = ref([
-  {
-    text: "", // Question text
-    choices: ["", "", "", ""], // Initial 4 choices
-    correctAnswer: "", // Correct answer index
-  },
-]);
+const route = useRoute();
+const auth = getAuth();
 
-// Add a new question (with 4 initial choices)
-const addQuestion = () => {
-  if (questions.value.length < 10) {
-    questions.value.push({
-      text: "",
-      choices: ["", "", "", ""], // Default to 4 choices
-      correctAnswer: "",
-    });
+const lessonId = route.query.lessonId as string;
+const sublessonId = route.query.sublessonId as string;
+
+const questions = ref(
+  Array.from({ length: 10 }, () => ({
+    text: "",
+    choices: ["", "", "", ""],
+    correctAnswer: 0,
+  }))
+);
+
+// Fetch existing quiz questions if available
+const fetchQuiz = async () => {
+  try {
+    const quizCollectionRef = collection(db, "lessons", lessonId, "sublessons", sublessonId, "quiz");
+    const qSnapshot = await getDocs(query(quizCollectionRef, orderBy("__name__")));
+
+    if (!qSnapshot.empty) {
+      const loadedQuestions: typeof questions.value = [];
+
+      qSnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        loadedQuestions.push({
+          text: data.question || "",
+          choices: data.options || ["", "", "", ""],
+          correctAnswer: data.answer ?? 0,
+        });
+      });
+
+      questions.value = loadedQuestions;
+    }
+  } catch (error) {
+    console.error("Failed to fetch quiz questions:", error);
   }
 };
 
-// Handle form submission (this can be extended to save or process the data)
-const handleSubmit = () => {
-  console.log("All Questions Submitted:", questions.value);
+// Submit questions to Firestore
+const handleSubmit = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("User not logged in");
+    return;
+  }
+
+  try {
+    const sublessonDocRef = doc(db, "lessons", lessonId, "sublessons", sublessonId);
+    await setDoc(sublessonDocRef, { exercise: "quiz" }, { merge: true });
+
+    for (let i = 0; i < questions.value.length; i++) {
+      const q = questions.value[i];
+
+      const questionData = {
+        question: q.text,
+        options: q.choices,
+        answer: q.correctAnswer,
+      };
+
+      const qDocRef = doc(db, "lessons", lessonId, "sublessons", sublessonId, "quiz", `${i + 1}`);
+      await setDoc(qDocRef, questionData);
+    }
+
+    alert("Multiple choice questions submitted successfully!");
+  } catch (error) {
+    console.error("Error submitting quiz:", error);
+    alert("Submission failed. Please try again.");
+  }
 };
+
+// Load existing questions on mount
+onMounted(() => {
+  fetchQuiz();
+});
 </script>
 
 <style scoped>
@@ -107,12 +155,10 @@ input,
 select {
   transition: border-color 0.3s ease;
 }
-
 input:focus,
 select:focus {
   border-color: #4f7fcf;
 }
-
 button:disabled {
   background-color: #ccc;
 }

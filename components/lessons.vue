@@ -108,9 +108,15 @@
           <td class="px-6 py-4 max-w-[250px] truncate">{{ sublesson.text }}</td>
           <td class="px-6 py-4">
           
-            <NuxtLink :to="{ path: `lessons/${sublesson.id}/exercise` }">
-              <button class="text-white bg-blue-500 rounded px-4 py-2">Add Quiz</button>
+            <NuxtLink 
+              :to="{ 
+                path: `/lessons/${sublesson.id}/exercise`, 
+                query: { lessonId: sublesson.id.split('.')[0] + '.0', sublessonId: sublesson.id } 
+              }"
+            >
+              <button class="text-white bg-blue-500 rounded px-4 py-2">Exercise</button>
             </NuxtLink>
+
            
             <button @click="openEditModal(sublesson)" class="px-4 py-2 text-white bg-yellow-500 rounded hover:bg-yellow-600 mx-2">
               Edit
