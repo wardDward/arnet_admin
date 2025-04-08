@@ -107,12 +107,12 @@
           <td class="px-6 py-4">{{ sublesson.lessonTitle }}</td>
           <td class="px-6 py-4 max-w-[250px] truncate">{{ sublesson.text }}</td>
           <td class="px-6 py-4">
-          <!-- 
-            <NuxtLink :to="{ path: `/lessons/${sublesson.id}/create_quiz` }">
+          
+            <NuxtLink :to="{ path: `lessons/${sublesson.id}/exercise` }">
               <button class="text-white bg-blue-500 rounded px-4 py-2">Add Quiz</button>
             </NuxtLink>
-            -->
-            <button @click="openEditModal(sublesson)" class="px-4 py-2 text-white bg-yellow-500 rounded hover:bg-yellow-600">
+           
+            <button @click="openEditModal(sublesson)" class="px-4 py-2 text-white bg-yellow-500 rounded hover:bg-yellow-600 mx-2">
               Edit
             </button>
             <button @click="promptDeleteSublesson(sublesson)" class="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600">
