@@ -59,7 +59,7 @@ const { user } = useAuthUser();
 const { logout } = useAuth();
 const router = useRouter();
 
-const tabs = ["Accounts", "Lessons"];
+const tabs = ["Accounts", "Lessons", "Exercises"];
 
 const toggleMenu = ref(false);
 
