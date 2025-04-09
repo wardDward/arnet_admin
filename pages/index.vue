@@ -15,6 +15,8 @@ import Navbar from "@/components/Navbar.vue";
 import Accounts from "~/components/accounts.vue";
 import Exercises from "~/components/exercises.vue";
 import Lessons from "~/components/lessons.vue";
+import Scores from "~/components/scores.vue";
+
 
 const activeTab = ref("Accounts");
 
@@ -26,6 +28,8 @@ const currentComponent = computed(() => {
       return Lessons;
     case "Exercises":
       return Exercises;
+    case "Scores":
+      return Scores;
     default:
       return Accounts;
   }

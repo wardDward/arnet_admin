@@ -29,24 +29,6 @@
       v-if="toggleMenu"
       class="absolute w-[200px] bg-slate-100/50 border flex flex-col right-0 top-full"
     >
-      <NuxtLink
-        to="#"
-        class="text-sm hover:underline text-black cursor-pointer py-1 px-3 hover:bg-slate-200"
-      >
-        Accounts
-      </NuxtLink>
-      <NuxtLink
-        to="#"
-        class="text-sm hover:underline text-black cursor-pointer py-1 px-3 hover:bg-slate-200"
-      >
-        Lesson
-      </NuxtLink>
-      <NuxtLink
-        to="#"
-        class="text-sm hover:underline text-black cursor-pointer py-1 px-3 hover:bg-slate-200"
-      >
-        Exercise
-      </NuxtLink>
       <div>
         <button @click="handleLogout" class="text-sm hover:underline text-black cursor-pointer py-1 px-3 hover:bg-slate-200">Logout</button>
       </div>
@@ -59,7 +41,7 @@ const { user } = useAuthUser();
 const { logout } = useAuth();
 const router = useRouter();
 
-const tabs = ["Accounts", "Lessons", "Exercises"];
+const tabs = ["Accounts", "Lessons", "Exercises", "Scores"];
 
 const toggleMenu = ref(false);
 
