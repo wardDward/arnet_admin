@@ -1,6 +1,6 @@
 <template>
   <div class="p-6 bg-gray-100">
-    <h2 class="text-2xl font-semibold mb-4">Create Questions and Answers</h2>
+    <h2 class="text-2xl font-semibold mb-4">Create True or False Questions</h2>
 
     <!-- Loop through 10 question fields -->
     <form @submit.prevent="handleSubmit" class="space-y-4">
@@ -19,18 +19,19 @@
           />
         </div>
 
-        <!-- Answer Input -->
+        <!-- Answer Dropdown -->
         <div>
           <label :for="'answer-' + index" class="text-lg font-medium mb-2">
-            Answer {{ index + 1 }}:
+            Answer:
           </label>
-          <input
+          <select
             v-model="item.answer"
             :id="'answer-' + index"
-            type="text"
             class="w-full p-2 border border-gray-300 rounded-md"
-            placeholder="Type your answer here"
-          />
+          >
+            <option value="0">True</option>
+            <option value="1">False</option>
+          </select>
         </div>
       </div>
 
@@ -46,26 +47,120 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import { db } from "@/utils/firebase";
+import {
+  doc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  orderBy
+} from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+const auth = getAuth();
+
+const lessonId = route.query.lessonId as string;
+const sublessonId = route.query.sublessonId as string;
 
 const questionItems = ref(
-  Array.from({ length: 10 }, (_, index) => ({
-    question: ``, // Default question
-    answer: "", // Empty answer field
+  Array.from({ length: 10 }, () => ({
+    question: "",
+    answer: "0" // Default as "True"
   }))
 );
 
-const handleSubmit = () => {
-  console.log(questionItems.value);
+// Fetch existing TOF questions if they exist
+const fetchTofQuestions = async () => {
+  try {
+    const tofCollectionRef = collection(
+      db,
+      "lessons",
+      lessonId,
+      "sublessons",
+      sublessonId,
+      "tof"
+    );
+
+    const qSnapshot = await getDocs(query(tofCollectionRef, orderBy("__name__")));
+
+    if (!qSnapshot.empty) {
+      const fetchedQuestions: typeof questionItems.value = [];
+
+      qSnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        fetchedQuestions.push({
+          question: data.statement || "",
+          answer: String(data.answer ?? "0")
+        });
+      });
+
+      questionItems.value = fetchedQuestions;
+    }
+  } catch (error) {
+    console.error("Failed to fetch TOF questions:", error);
+  }
 };
+
+// Submit TOF questions
+const handleSubmit = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("User not logged in");
+    return;
+  }
+
+  try {
+    const sublessonDocRef = doc(
+      db,
+      "lessons",
+      lessonId,
+      "sublessons",
+      sublessonId
+    );
+    await setDoc(sublessonDocRef, { exercise: "tof" }, { merge: true });
+
+    for (let i = 0; i < questionItems.value.length; i++) {
+      const item = questionItems.value[i];
+
+      const qDocRef = doc(
+        db,
+        "lessons",
+        lessonId,
+        "sublessons",
+        sublessonId,
+        "tof",
+        `${i + 1}`
+      );
+
+      await setDoc(qDocRef, {
+        statement: item.question,
+        answer: Number(item.answer)
+      });
+    }
+
+    alert("Questions and answers submitted successfully!");
+  } catch (error) {
+    console.error("Error writing to Firestore:", error);
+    alert("Submission failed. Please try again.");
+  }
+};
+
+// Load questions on mount
+onMounted(() => {
+  fetchTofQuestions();
+});
 </script>
 
 <style scoped>
-input {
+select {
   transition: border-color 0.3s ease;
 }
 
-input:focus {
+select:focus {
   border-color: #4f7fcf;
 }
 
