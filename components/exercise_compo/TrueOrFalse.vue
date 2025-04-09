@@ -1,6 +1,6 @@
 <template>
   <div class="p-6 bg-gray-100">
-    <h2 class="text-2xl font-semibold mb-4">Create Questions and Answers</h2>
+    <h2 class="text-2xl font-semibold mb-4">Create True or False Questions</h2>
 
     <!-- Loop through 10 question fields -->
     <form @submit.prevent="handleSubmit" class="space-y-4">

@@ -4,6 +4,18 @@
 
     <!-- Input Container -->
     <div class="bg-white p-6 rounded-lg shadow-md space-y-4 max-w-2xl mx-auto">
+      <!-- Instruction Input -->
+      <div class="mb-4">
+        <label class="block text-gray-700 font-medium mb-2">Instruction:</label>
+        <input
+          v-model="instruction"
+          type="text"
+          class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter instruction for the sequence"
+        />
+      </div>
+
+      <!-- Step Inputs -->
       <div
         v-for="(item, index) in questions"
         :key="item.id"
@@ -48,6 +60,9 @@ const questions = ref(
 );
 
 // Fetch existing sequence questions if they exist
+const instruction = ref("");
+
+// Fetch existing sequence questions and instruction
 const fetchSequenceQuestions = async () => {
   const lessonId = route.query.lessonId as string;
   const sublessonId = route.query.sublessonId as string;
@@ -67,10 +82,15 @@ const fetchSequenceQuestions = async () => {
 
     if (sequenceDocSnap.exists()) {
       const data = sequenceDocSnap.data();
-      const fetchedQuestions = Object.keys(data).map((key) => ({
-        id: parseInt(key),
-        text: data[key] as string,
-      }));
+
+      instruction.value = data.instruction || "";
+
+      const fetchedQuestions = Object.keys(data)
+        .filter((key) => key !== "instruction")
+        .map((key) => ({
+          id: parseInt(key),
+          text: data[key] as string,
+        }));
 
       questions.value = fetchedQuestions;
     }
@@ -79,7 +99,7 @@ const fetchSequenceQuestions = async () => {
   }
 };
 
-// Handle form submission
+// Submit with instruction
 const handleSubmit = async () => {
   const user = auth.currentUser;
   if (!user) {
@@ -95,13 +115,15 @@ const handleSubmit = async () => {
     const sublessonDocRef = doc(db, "lessons", lessonId, "sublessons", sublessonId);
     await setDoc(sublessonDocRef, { exercise: "sequence" }, { merge: true });
 
-    // Add a collection "sequence" → doc "steps" → fields 1 to 10
+    // Save the sequence steps + instruction
     const stepsDocRef = doc(db, "lessons", lessonId, "sublessons", sublessonId, "sequence", "steps");
 
     const stepsData = questions.value.reduce((acc, item, index) => {
       acc[String(index + 1)] = item.text;
       return acc;
     }, {} as Record<string, string>);
+
+    stepsData.instruction = instruction.value;
 
     await setDoc(stepsDocRef, stepsData);
 

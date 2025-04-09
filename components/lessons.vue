@@ -92,42 +92,42 @@
     </div>
 
     <!-- Lessons Table -->
-    <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-        <tr>
-          <th scope="col" class="px-6 py-3">Sublesson</th>
-          <th scope="col" class="px-6 py-3">Lesson</th>
-          <th scope="col" class="px-6 py-3">Content</th>
-          <th scope="col" class="px-6 py-3">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="sublesson in sublessons" :key="sublesson.id" class="bg-white">
-          <td class="px-6 py-4">{{ sublesson.title }}</td>
-          <td class="px-6 py-4">{{ sublesson.lessonTitle }}</td>
-          <td class="px-6 py-4 max-w-[250px] truncate">{{ sublesson.text }}</td>
-          <td class="px-6 py-4">
-          
-            <NuxtLink 
-              :to="{ 
-                path: `/lessons/${sublesson.id}/exercise`, 
-                query: { lessonId: sublesson.id.split('.')[0] + '.0', sublessonId: sublesson.id } 
-              }"
-            >
-              <button class="text-white bg-blue-500 rounded px-4 py-2">Exercise</button>
-            </NuxtLink>
+<table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+  <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+    <tr>
+      <th scope="col" class="px-6 py-3">Sublesson ID</th> <!-- NEW COLUMN -->
+      <th scope="col" class="px-6 py-3">Sublesson</th>
+      <th scope="col" class="px-6 py-3">Lesson</th>
+      <th scope="col" class="px-6 py-3">Content</th>
+      <th scope="col" class="px-6 py-3">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr v-for="sublesson in sublessons" :key="sublesson.id" class="bg-white">
+      <td class="px-6 py-4 font-mono text-xs">{{ sublesson.id }}</td> <!-- NEW DATA CELL -->
+      <td class="px-6 py-4">{{ sublesson.title }}</td>
+      <td class="px-6 py-4">{{ sublesson.lessonTitle }}</td>
+      <td class="px-6 py-4 max-w-[250px] truncate">{{ sublesson.text }}</td>
+      <td class="px-6 py-4">
+        <NuxtLink 
+          :to="{ 
+            path: `/lessons/${sublesson.id}/exercise`, 
+            query: { lessonId: sublesson.id.split('.')[0] + '.0', sublessonId: sublesson.id } 
+          }"
+        >
+          <button class="text-white bg-blue-500 rounded px-4 py-2">Exercise</button>
+        </NuxtLink>
 
-           
-            <button @click="openEditModal(sublesson)" class="px-4 py-2 text-white bg-yellow-500 rounded hover:bg-yellow-600 mx-2">
-              Edit
-            </button>
-            <button @click="promptDeleteSublesson(sublesson)" class="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600">
-              Delete
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+        <button @click="openEditModal(sublesson)" class="px-4 py-2 text-white bg-yellow-500 rounded hover:bg-yellow-600 mx-2">
+          Edit
+        </button>
+        <button @click="promptDeleteSublesson(sublesson)" class="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600">
+          Delete
+        </button>
+      </td>
+    </tr>
+  </tbody>
+</table>
   </div>
 
   <!-- Global Loading Spinner -->
@@ -188,7 +188,11 @@ const fetchLessons = async () => {
     });
 
     const resolved = await Promise.all(sublessonPromises);
-    sublessons.value = resolved.flat();
+    sublessons.value = resolved.flat().sort((a, b) => {
+    const aParts = a.id.split('.').map(Number);
+    const bParts = b.id.split('.').map(Number);
+    return aParts[0] - bParts[0] || aParts[1] - bParts[1];
+  });
   } catch (error) {
     console.error("Error fetching lessons or sublessons:", error);
   }
