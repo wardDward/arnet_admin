@@ -24,7 +24,7 @@ const currentComponent = computed(() => {
   switch (activeTab.value) {
     case "Accounts":
       return Accounts;
-    case "Lessons":
+    case "Lessons & Exercises":
       return Lessons;
     case "Exercises":
       return Exercises;

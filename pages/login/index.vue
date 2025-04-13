@@ -64,51 +64,80 @@
 </template>
 
 <script lang="ts" setup>
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { getDoc, doc } from "firebase/firestore";
+import { auth, db } from "@/utils/firebase";
+
 useHead({ title: "Login" });
 
 const email = ref("");
 const password = ref("");
 const loading = ref(false);
 const errorMessage = ref("");
-
-const { login } = useAuth();
 const router = useRouter();
 
 const handleLogin = async () => {
   loading.value = true;
   errorMessage.value = "";
-  
 
   if (!email.value || !password.value) {
     errorMessage.value = "Email and password are required.";
-    password.value = ''
+    password.value = "";
     loading.value = false;
     return;
   }
 
   if (!email.value.includes("@")) {
     errorMessage.value = "Invalid email format.";
-    password.value = ''
+    password.value = "";
     loading.value = false;
     return;
   }
 
   try {
-    await login(email.value, password.value);
+    // 🔐 Login using email + password
+    const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value);
+    const user = userCredential.user; // ← UID is here
+    const uid = user.uid;
+
+    // 🔍 Access Firestore: profile/{uid}
+    const profileRef = doc(db, "profile", uid);
+    const profileSnap = await getDoc(profileRef);
+
+    if (!profileSnap.exists()) {
+      await signOut(auth);
+      throw new Error("No profile found for this user.");
+    }
+
+    const userData = profileSnap.data();
+    const role = (userData.role || "").toLowerCase();
+
+    if (role !== "admin") {
+      await signOut(auth);
+      throw new Error("Access denied. Admins only.");
+    }
+
+    // ✅ Role is admin — grant access
     router.push("/");
-    window.location.reload()
+    window.location.reload();
+
   } catch (error: any) {
-    errorMessage.value =
-      error.code === "auth/invalid-email"
-        ? "Invalid email format. Please check your input."
-        : error.code === "auth/user-not-found"
-        ? "User not found. Please register."
-        : error.code === "auth/wrong-password"
-        ? "Incorrect password. Try again."
-        : "Login failed. Please try again.";
+    console.error("Login error:", error);
+
+    if (error.message === "No profile found for this user." || error.message === "Access denied. Admins only.") {
+      errorMessage.value = error.message;
+    } else {
+      errorMessage.value =
+        error.code === "auth/invalid-email"
+          ? "Invalid email format."
+          : error.code === "auth/user-not-found"
+          ? "User not found. Please register."
+          : error.code === "auth/wrong-password"
+          ? "Incorrect password."
+          : "Login failed. Please try again.";
+    }
   } finally {
     loading.value = false;
   }
 };
 </script>
-

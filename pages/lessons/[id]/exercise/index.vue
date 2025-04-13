@@ -9,35 +9,37 @@
 
       <!-- Tab Buttons -->
       <div class="flex flex-wrap gap-4 mb-6 justify-between sm:justify-start">
-        <button
+      <button
           class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
+          @click="selectedTab = 'multipleChoice'"
+        >
+          Multiple Choice
+        </button>
+
+        <button
+          class="bg-yellow-500 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors w-full sm:w-auto"
           @click="selectedTab = 'trueOrFalse'"
         >
           True or False
         </button>
         <button
-          class="bg-yellow-500 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors w-full sm:w-auto"
+          class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors w-full sm:w-auto"
           @click="selectedTab = 'sequence'"
         >
           Sequence
         </button>
-        <button
-          class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors w-full sm:w-auto"
-          @click="selectedTab = 'multipleChoice'"
-        >
-          Multiple Choice
-        </button>
+        
       </div>
 
       <!-- Tab Content -->
+      <div v-if="selectedTab === 'multipleChoice'">
+        <MultipleChoice :sublesson="sublesson" />
+      </div>
       <div v-if="selectedTab === 'trueOrFalse'">
         <TrueOrFalse :sublesson="sublesson" />
       </div>
       <div v-if="selectedTab === 'sequence'">
         <Sequence :sublesson="sublesson" />
-      </div>
-      <div v-if="selectedTab === 'multipleChoice'">
-        <MultipleChoice :sublesson="sublesson" />
       </div>
     </div>
 
@@ -59,7 +61,7 @@ import MultipleChoice from "@/components/exercise_compo/MultipleChoice.vue";
 const route = useRoute();
 const sublesson = ref<any>(null);
 const isLoading = ref(false);
-const selectedTab = ref("trueOrFalse");
+const selectedTab = ref("multipleChoice");
 
 onMounted(async () => {
   const sublessonId = route.params.id;
@@ -83,12 +85,34 @@ const fetchSublessonById = async (sublessonId: string) => {
 
       for (const subDoc of sublessonsSnap.docs) {
         if (subDoc.id === sublessonId) {
+          const subDocData = subDoc.data();
+
           sublesson.value = {
             id: subDoc.id,
-            ...subDoc.data(),
+            ...subDocData,
             parentId: lessonDoc.id,
             lessonTitle: lessonDoc.data().title
           };
+
+          // Check for subcollections
+          const basePath = `lessons/${lessonDoc.id}/sublessons/${subDoc.id}`;
+
+          const [quizSnap, tofSnap, sequenceSnap] = await Promise.all([
+            getDocs(collection(db, basePath, "quiz")),
+            getDocs(collection(db, basePath, "tof")),
+            getDocs(collection(db, basePath, "sequence"))
+          ]);
+
+          if (!quizSnap.empty) {
+            selectedTab.value = "multipleChoice";
+          } else if (!tofSnap.empty) {
+            selectedTab.value = "trueOrFalse";
+          } else if (!sequenceSnap.empty) {
+            selectedTab.value = "sequence";
+          } else {
+            selectedTab.value = "multipleChoice"; // default fallback
+          }
+
           return;
         }
       }
@@ -99,6 +123,7 @@ const fetchSublessonById = async (sublessonId: string) => {
     console.error("Error fetching sublesson:", error);
   }
 };
+
 </script>
 
 <style scoped>

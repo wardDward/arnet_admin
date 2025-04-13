@@ -7,15 +7,23 @@
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" class="px-6 py-3">Lesson Title</th>
+            <th scope="col" class="px-6 py-3">Sublesson ID</th>
+            <th scope="col" class="px-6 py-3">Type</th>
             <th scope="col" class="px-6 py-3">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="exercise in exercises" :key="exercise.id" class="bg-white">
+          <tr 
+            v-for="exercise in exercises" 
+            :key="exercise.id" 
+            class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
+          >
             <td class="px-6 py-4">{{ exercise.lessonTitle }}</td>
+            <td class="px-6 py-4">{{ exercise.sublessonId }}</td>
+            <td class="px-6 py-4 capitalize">{{ exercise.type }}</td>
             <td class="px-6 py-4">
               <button
-                @click="deleteExercise(exercise.id)"
+                @click="deleteExercise(exercise)"
                 class="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600"
               >
                 Delete
@@ -25,46 +33,78 @@
         </tbody>
       </table>
     </div>
+    <div v-else class="text-gray-600 dark:text-gray-300 mt-4">No exercises found.</div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import { db } from "@/utils/firebase";
-import { collection, getDocs, deleteDoc, doc, getDoc } from "firebase/firestore"; // Correct imports
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  deleteDoc,
+} from "firebase/firestore";
 
-// State for lessons and exercises
-const toggleModal = ref(false);
-const exercises = ref<any[]>([]);
+interface Exercise {
+  id: string;
+  type: string;
+  lessonId: string;
+  sublessonId: string;
+  lessonTitle: string;
+  [key: string]: any;
+}
 
-// Fetch exercises and their related lesson titles
+const exercises = ref<Exercise[]>([]);
+
 const fetchExercises = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, "exercises"));
-    const exercisePromises = querySnapshot.docs.map(async (docSnapshot) => {
-      const exerciseData = { id: docSnapshot.id, ...docSnapshot.data() };
-      // Fetch lesson title using the lessonId from each exercise
-      const lessonRef = doc(db, "lessons", exerciseData.lessonId); // Correct use of doc function
-      const lessonSnapshot = await getDoc(lessonRef);
-      const lessonTitle = lessonSnapshot.exists() ? lessonSnapshot.data().title : "Unknown Lesson";
-      
-      // Add lesson title to exercise data
-      exerciseData.lessonTitle = lessonTitle;
-      return exerciseData;
-    });
+    const lessonSnapshots = await getDocs(collection(db, "lessons"));
+    const allExercises: Exercise[] = [];
 
-    // Wait for all promises to resolve and update exercises
-    exercises.value = await Promise.all(exercisePromises);
+    for (const lessonDoc of lessonSnapshots.docs) {
+      const lessonId = lessonDoc.id;
+      const sublessonsRef = collection(db, `lessons/${lessonId}/sublessons`);
+      const sublessonsSnapshot = await getDocs(sublessonsRef);
+
+      for (const sublessonDoc of sublessonsSnapshot.docs) {
+        const sublessonId = sublessonDoc.id;
+        const sublessonData = sublessonDoc.data();
+        const lessonTitle = sublessonData.title || lessonId;
+
+        const exerciseTypes = ["quiz", "tof", "sequence"];
+        for (const type of exerciseTypes) {
+          const exercisesRef = collection(db, `lessons/${lessonId}/sublessons/${sublessonId}/${type}`);
+          const exercisesSnapshot = await getDocs(exercisesRef);
+
+          exercisesSnapshot.forEach((exerciseDoc) => {
+            allExercises.push({
+              id: exerciseDoc.id,
+              type,
+              lessonId,
+              sublessonId,
+              lessonTitle,
+              ...exerciseDoc.data(),
+            });
+          });
+        }
+      }
+    }
+
+    exercises.value = allExercises;
   } catch (error) {
     console.error("Error fetching exercises:", error);
   }
 };
 
-// Delete exercise
-const deleteExercise = async (exerciseId: string) => {
+const deleteExercise = async (exercise: Exercise) => {
   try {
-    await deleteDoc(doc(db, "exercises", exerciseId)); // Correct use of doc function
-    exercises.value = exercises.value.filter((exercise) => exercise.id !== exerciseId);
+    const { lessonId, sublessonId, type, id } = exercise;
+    const exerciseRef = doc(db, `lessons/${lessonId}/sublessons/${sublessonId}/${type}/${id}`);
+    await deleteDoc(exerciseRef);
+    exercises.value = exercises.value.filter((ex) => ex.id !== id);
   } catch (error) {
     console.error("Error deleting exercise:", error);
   }
