@@ -8,7 +8,7 @@ import {
 } from "firebase/auth";
 import type { User } from "firebase/auth";
 import { auth, db } from "@/utils/firebase";
-import { doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, updateDoc } from "firebase/firestore";
 
 const user = ref<User | null>(null);
 const userData = ref<any>(null);
@@ -114,5 +114,17 @@ export const useAuth = () => {
     }
   }
 
-  return { user, userData, users, register, login, logout, fetchUsers , deleteUser };
+  
+const updateUser = async (userId: string, updatedData: any) => {
+  try {
+    const userRef = doc(db, "profile", userId);
+    await updateDoc(userRef, updatedData);
+    await fetchUsers();
+  } catch (error: any) {
+    console.error("Error updating user:", error.message);
+    throw error;
+  }
+};
+
+  return { user, userData, users, register, login, logout, fetchUsers , deleteUser, updateUser };
 };
