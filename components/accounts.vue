@@ -184,7 +184,7 @@ const errors = ref({
 });
 
 const currentPage = ref(1);
-const itemsPerPage = 5;
+const itemsPerPage = 6;
 
 const { register, users, fetchUsers, deleteUser } = useAuth();
 

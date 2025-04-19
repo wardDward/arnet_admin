@@ -35,7 +35,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="(record, index) in filteredScores"
+              v-for="(record, index) in paginatedScores"
               :key="index"
               class="border-b hover:bg-gray-50 transition-colors"
             >
@@ -64,10 +64,41 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Pagination Controls -->
+      <div class="flex justify-between items-center mt-4">
+        <button 
+          @click="goToPage(currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="px-4 py-2 bg-white text-black border rounded disabled:bg-gray-300"
+        >
+          Previous
+        </button>
+        <div class="flex gap-2">
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            @click="goToPage(page)"
+            :class="{
+              'bg-green-500 text-white': currentPage === page,
+              'bg-gray-200 text-black': currentPage !== page
+            }"
+            class="px-4 py-2 rounded"
+          >
+            {{ page }}
+          </button>
+        </div>
+        <button 
+          @click="goToPage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="px-4 py-2 bg-white text-black border rounded disabled:bg-gray-300"
+        >
+          Next
+        </button>
+      </div>
     </div>
   </div>
 </template>
-
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { db } from '@/utils/firebase'; // Adjust this to your correct path
@@ -78,6 +109,11 @@ const scores = ref<any[]>([]);
 const isLoading = ref(false); // Add loading state
 const lessonTitleMap = new Map<string, string>();
 
+// Pagination state
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+
+// Preload lesson titles function
 const preloadLessonTitles = async () => {
   const lessonIds = ['1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0'];
 
@@ -91,7 +127,6 @@ const preloadLessonTitles = async () => {
     });
   }
 };
-
 
 // Function to fetch data from Firestore for all users
 const fetchScores = async () => {
@@ -149,11 +184,20 @@ const fetchScores = async () => {
   }
 };
 
-
-
-onMounted(() => {
-  fetchScores();
+// Pagination logic
+const totalPages = computed(() => Math.ceil(filteredScores.value.length / itemsPerPage.value));
+const paginatedScores = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredScores.value.slice(start, end);
 });
+
+// Function to handle page changes
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
 
 // Filter scores based on search query
 const filteredScores = computed(() =>
@@ -162,14 +206,8 @@ const filteredScores = computed(() =>
     s.userId.toLowerCase().includes(searchQuery.value.toLowerCase()) // Search by userId as well
   )
 );
-</script>
 
-<style scoped>
-table {
-  border-spacing: 0;
-}
-th,
-td {
-  min-width: 120px;
-}
-</style>
+onMounted(() => {
+  fetchScores();
+});
+</script>
