@@ -1,6 +1,10 @@
 <template>
   <div>
 
+    <!-- Loading Spinner -->
+    <div v-if="isLoading" class="fixed inset-0 z-[9999999] bg-black bg-opacity-50 flex items-center justify-center">
+      <div class="border-4 border-white border-t-transparent h-12 w-12 rounded-full animate-spin"></div>
+    </div>
 
     <!-- Overlay & Close Button -->
     <div v-if="toggleModal || editModal" class="bg-black/50 absolute inset-0"></div>

@@ -1,12 +1,8 @@
 <template>
   <div class="p-4 bg-gray-100 min-h-screen">
     <!-- Loading Spinner -->
-    <div v-if="isLoading" class="fixed inset-0 z-[9999999] bg-black/40 flex items-center justify-center">
-      <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-        <path class="opacity-75" fill="currentColor"
-          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-      </svg>
+    <div v-if="isLoading" class="fixed inset-0 z-[9999999] bg-black bg-opacity-50 flex items-center justify-center">
+      <div class="border-4 border-white border-t-transparent h-12 w-12 rounded-full animate-spin"></div>
     </div>
 
     <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow">
@@ -26,7 +22,7 @@
         <table class="min-w-full table-auto border-collapse">
           <thead class="bg-gray-200">
             <tr>
-              <th class="text-left p-3">User ID</th>
+              <th class="text-left p-3">Student Number</th>
               <th class="text-left p-3">Name</th>
               <th class="text-left p-3">Lesson Name</th>
               <th class="text-left p-3">Score</th>
@@ -101,81 +97,90 @@
 </template>
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
-import { db } from '@/utils/firebase'; // Adjust this to your correct path
-import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/utils/firebase';
+import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 
 const searchQuery = ref('');
 const scores = ref<any[]>([]);
-const isLoading = ref(false); // Add loading state
+const isLoading = ref(false);
 const lessonTitleMap = new Map<string, string>();
 
-// Pagination state
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 
-// Preload lesson titles function
-const preloadLessonTitles = async () => {
-  const lessonIds = ['1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0'];
+// Cache lesson titles only once
+const preloadLessonTitles = (() => {
+  let hasLoaded = false;
+  return async () => {
+    if (hasLoaded) return;
+    hasLoaded = true;
 
-  for (const lessonId of lessonIds) {
-    const sublessonsRef = collection(db, `lessons/${lessonId}/sublessons`);
-    const sublessonsSnap = await getDocs(sublessonsRef);
-
-    sublessonsSnap.forEach(doc => {
-      const title = doc.data().title;
-      lessonTitleMap.set(doc.id, title);
+    const lessonIds = Array.from({ length: 10 }, (_, i) => `${i + 1}.0`);
+    const fetches = lessonIds.map(async (lessonId) => {
+      const sublessonsRef = collection(db, `lessons/${lessonId}/sublessons`);
+      const sublessonsSnap = await getDocs(sublessonsRef);
+      sublessonsSnap.forEach(doc => {
+        lessonTitleMap.set(doc.id, doc.data().title || doc.id);
+      });
     });
+
+    await Promise.all(fetches);
+  };
+})();
+
+const userIdMap = new Map<string, string>();
+
+const generateStableFakeUserId = (realUid: string) => {
+  if (userIdMap.has(realUid)) return userIdMap.get(realUid)!;
+
+  // Create a "stable" number based on the UID's hash
+  let hash = 0;
+  for (let i = 0; i < realUid.length; i++) {
+    hash = realUid.charCodeAt(i) + ((hash << 5) - hash);
   }
+  const stableNum = 1400 + (Math.abs(hash) % 600); // ensures between 1400-1999
+  const fakeUid = `21-${stableNum}`;
+  userIdMap.set(realUid, fakeUid);
+  return fakeUid;
 };
 
-// Function to fetch data from Firestore for all users
+
 const fetchScores = async () => {
   isLoading.value = true;
   try {
-    // Step 1: Preload lesson titles only once
     await preloadLessonTitles();
 
-    // Step 2: Fetch all user profiles
-    const profilesRef = collection(db, 'profile');
-    const profilesSnap = await getDocs(profilesRef);
-
+    const profilesSnap = await getDocs(collection(db, 'profile'));
+    const lessonIds = Array.from({ length: 10 }, (_, i) => `${i + 1}.0`);
     const allScores: any[] = [];
 
-    const lessonIds = ['1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0'];
-
-    // Step 3: Process all users in parallel
     await Promise.all(profilesSnap.docs.map(async (userDoc) => {
+      const { firstname, lastname } = userDoc.data();
       const userId = userDoc.id;
-      const userData = userDoc.data();
-      const userName = `${userData.firstname} ${userData.lastname}`;
+      const fakeUserId = generateStableFakeUserId(userId);
 
-      // Step 4: Process all lessons for this user in parallel
-      const userLessonFetches = lessonIds.map(async (lessonId) => {
-        const lessonRef = collection(db, `profile/${userId}/${lessonId}`);
-        const lessonSnap = await getDocs(lessonRef);
+      const userName = `${firstname} ${lastname}`;
 
-        lessonSnap.forEach((subDoc) => {
-          const sublessonId = subDoc.id;
-          const sublessonData = subDoc.data();
+      const lessonsFetch = lessonIds.map(async (lessonId) => {
+        const lessonSnap = await getDocs(collection(db, `profile/${userId}/${lessonId}`));
 
-          if (sublessonData.score !== undefined && sublessonData.status !== undefined) {
-            const lessonTitle = lessonTitleMap.get(sublessonId) || sublessonId;
-
+        lessonSnap.docs.forEach((subDoc) => {
+          const { score, status } = subDoc.data();
+          if (score !== undefined && status !== undefined) {
             allScores.push({
-              userId,
-              name: userName,
-              lesson: lessonTitle,
-              score: sublessonData.score,
-              status: sublessonData.status,
-            });
+            userId: fakeUserId, // display fake ID only
+            name: userName,
+            lesson: lessonTitleMap.get(subDoc.id) || subDoc.id,
+            score,
+            status,
+          });
           }
         });
       });
 
-      await Promise.all(userLessonFetches); // Wait for all lesson fetches to finish
+      await Promise.all(lessonsFetch);
     }));
 
-    // Step 5: Assign once and sort
     scores.value = allScores.sort((a, b) => a.userId.localeCompare(b.userId));
   } catch (error) {
     console.error('Error fetching scores:', error);
@@ -184,30 +189,25 @@ const fetchScores = async () => {
   }
 };
 
-// Pagination logic
 const totalPages = computed(() => Math.ceil(filteredScores.value.length / itemsPerPage.value));
 const paginatedScores = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredScores.value.slice(start, end);
+  return filteredScores.value.slice(start, start + itemsPerPage.value);
 });
 
-// Function to handle page changes
 const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page;
   }
 };
 
-// Filter scores based on search query
 const filteredScores = computed(() =>
   scores.value.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    s.userId.toLowerCase().includes(searchQuery.value.toLowerCase()) // Search by userId as well
+    s.userId.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 );
 
-onMounted(() => {
-  fetchScores();
-});
+onMounted(fetchScores);
 </script>
+
