@@ -8,41 +8,47 @@
 
     <!-- Overlay & Close Button -->
     <div v-if="toggleModal || editModal" class="bg-black/50 absolute inset-0"></div>
-   <!-- Edit Sublesson Modal -->
-<div v-if="editModal"
-  class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[999999] bg-white w-full md:w-[45%] lg:w-[45%] xl:w-[35%] p-4 rounded-lg shadow-lg">
-  <div class="text-center text-lg font-semibold tracking-wide mb-2">
-    Edit Sublesson
-  </div>
-  <hr />
-  <form class="p-4" @submit.prevent="updateSublesson">
-    <input v-model="editSublesson.title" class="w-full p-2 border rounded mb-2" placeholder="Sublesson Title" required />
-    
-    <select v-model="editSublesson.parentId" class="w-full p-2 border rounded mb-2" required>
-      <option disabled value="">Select Parent Lesson</option>
-      <option v-for="lesson in lessons" :key="lesson.id" :value="lesson.id">
-        {{ lesson.title }}
-      </option>
-    </select>
+    <div v-if="toggleModal || editModal" class="text-white absolute top-[20px] right-[50px] z-[999] cursor-pointer">
+      <Icon name="material-symbols:cancel-outline" style="color: white" class="h-[30px] w-[30px]"
+        @click.prevent="closeModals" />
+    </div>
+    <!-- Edit Sublesson Modal -->
+    <div v-if="editModal"
+      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[999999] bg-white w-full md:w-[45%] lg:w-[45%] xl:w-[35%] p-4 rounded-lg shadow-lg">
+      <div class="text-center text-lg font-semibold tracking-wide mb-2">
+        Edit Sublesson
+      </div>
+      <hr />
+      <form class="p-4" @submit.prevent="updateSublesson">
+        <input v-model="editSublesson.title" class="w-full p-2 border rounded mb-2" placeholder="Sublesson Title"
+          required />
 
-    <input v-model="editSublesson.videolink" class="w-full p-2 border rounded mb-2" placeholder="Video Link" />
-    <textarea v-model="editSublesson.text" class="w-full p-2 border rounded mb-2" rows="15"
-      placeholder="Sublesson Content"></textarea>
-    
-    <button type="submit" class="gradient w-full rounded-md text-lg font-[300] tracking-wide px-2 mt-5">
-      Update
-    </button>
-  </form>
-</div>
+        <select v-model="editSublesson.parentId" class="w-full p-2 border rounded mb-2" required>
+          <option disabled value="">Select Parent Lesson</option>
+          <option v-for="lesson in lessons" :key="lesson.id" :value="lesson.id">
+            {{ lesson.title }}
+          </option>
+        </select>
+
+        <input v-model="editSublesson.videolink" class="w-full p-2 border rounded mb-2" placeholder="Video Link" />
+        <textarea v-model="editSublesson.text" class="w-full p-2 border rounded mb-2" rows="15"
+          placeholder="Sublesson Content"></textarea>
+
+        <button type="submit" class="gradient w-full rounded-md text-lg font-[300] tracking-wide px-2 mt-5">
+          Update
+        </button>
+      </form>
+    </div>
+
 
     <!-- Add Sublesson Button -->
     <div class="flex items-center justify-between">
       <button class="text-sm hover:underline mb-2 gradient-text" type="button" @click.prevent="toggleModal = true">
-      Add Sublesson
-    </button>
-    <div class="mb-4">
-      <input v-model="searchQuery" type="text" placeholder="Search Sublessons" class="p-2 border rounded w-full" />
-    </div>
+        Add Sublesson
+      </button>
+      <div class="mb-4">
+        <input v-model="searchQuery" type="text" placeholder="Search Sublessons" class="p-2 border rounded w-full" />
+      </div>
 
     </div>
     <!-- Add Sublesson Modal -->
@@ -286,6 +292,14 @@ const addSublesson = async () => {
     isLoading.value = false;
   }
 };
+
+// Prompt for deletion
+const promptDeleteSublesson = (sublesson: any) => {
+  if (confirm(`Are you sure you want to delete ${sublesson.title}?`)) {
+    deleteSublesson(sublesson);
+  }
+};
+
 const updateSublesson = async () => {
   try {
     isLoading.value = true;
@@ -306,13 +320,6 @@ const updateSublesson = async () => {
   }
 };
 
-
-// Prompt for deletion
-const promptDeleteSublesson = (sublesson: any) => {
-  if (confirm(`Are you sure you want to delete ${sublesson.title}?`)) {
-    deleteSublesson(sublesson);
-  }
-};
 
 // Delete Sublesson
 const deleteSublesson = async (sublesson: any) => {
