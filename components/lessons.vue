@@ -75,25 +75,6 @@
       </form>
     </div>
 
-     <!-- Edit Sublesson Modal -->
-    <div
-      v-if="editModal"
-      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[999999] cursor-pointer bg-white w-full md:w-[45%] lg:w-[45%] xl:w-[35%] p-2 rounded-lg shadow-lg "
-    >
-      <div class="text-center text-lg font-semibold tracking-wide mb-2">
-        Edit Sublesson
-      </div>
-      <hr />
-      <form class="p-4" @submit.prevent="updateSublesson">
-        <input v-model="editSublesson.title" class="w-full p-2 border rounded mb-2" required />
-        <input v-model="editSublesson.videolink" class="w-full p-2 border rounded mb-2" placeholder="Video Link"/>
-        <textarea v-model="editSublesson.text" class="w-full p-2 border rounded mb-2" rows="17"></textarea>
-        <button type="submit" class="gradient w-full rounded-md text-lg font-[300] tracking-wide px-2 mt-5">
-          Update
-        </button>
-      </form>
-    </div>
-
     <!-- Lessons Table -->
     <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
       <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -313,23 +294,7 @@ const addSublesson = async () => {
 };
 
 
-// Update Sublesson
-const updateSublesson = async () => {
-  try {
-    await updateDoc(doc(db, "lessons", editSublesson.value.parentId, "sublessons", editSublesson.value.id), {
-    title: editSublesson.value.title,
-    text: editSublesson.value.text,
-    videolink: editSublesson.value.videolink || "", // Optional fallback
-  });
 
-    const index = sublessons.value.findIndex(sub => sub.id === editSublesson.value.id);
-    sublessons.value[index] = { ...editSublesson.value };
-
-    closeModals();
-  } catch (error) {
-    console.error("Error updating sublesson:", error);
-  }
-};
 
 // Prompt for deletion
 const promptDeleteSublesson = (sublesson: any) => {

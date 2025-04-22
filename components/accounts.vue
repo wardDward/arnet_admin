@@ -50,6 +50,7 @@
         <div class="flex flex-col mb-2">
           <label class="text-sm">Student Number</label>
           <input type="text" v-model="studno" class="w-full border border-slate-300 py-1 rounded-md px-2" />
+          <span v-if="errors.studno" class="text-red-500 text-xs">{{ errors.studno }}</span>
         </div>
         <div class="flex flex-col mb-2">
           <label class="text-sm">Firstname</label>
@@ -215,13 +216,22 @@ const itemsPerPage = 6;
 const { register, users, fetchUsers, deleteUser, updateUser } = useAuth();
 
 const handleRegister = async () => {
-  errors.value = { studno: "", firstname: "", lastname: "", email: "", password: "" };
+  errors.value = { firstname: "", lastname: "", email: "", password: "", studno: "" };
 
   if (!studno.value.trim()) errors.value.firstname = "Student number is required.";
   if (!firstname.value.trim()) errors.value.firstname = "Firstname is required.";
   if (!lastname.value.trim()) errors.value.lastname = "Lastname is required.";
   if (!email.value.trim()) errors.value.email = "Email is required.";
   if (!password.value.trim()) errors.value.password = "Password is required.";
+
+  const existingUser = users.value.find(
+    (user: any) => user.studno === studno.value || user.email === email.value
+  );
+
+  if (existingUser) {
+    if (existingUser.studno === studno.value) errors.value.studno = "Student number already exists.";
+    if (existingUser.email === email.value) errors.value.email = "Email already exists.";
+  }
 
   if (Object.values(errors.value).some((err) => err)) return;
 
@@ -256,6 +266,17 @@ const handleEdit = async () => {
   if (!editFirstname.value.trim()) editErrors.value.firstname = "Firstname is required.";
   if (!editLastname.value.trim()) editErrors.value.lastname = "Lastname is required.";
   if (!editEmail.value.trim()) editErrors.value.email = "Email is required.";
+
+  const existingUser = users.value.find(
+    (user: any) =>
+      user.id !== userToEdit.value.id &&
+      (user.studno === editStudno.value || user.email === editEmail.value)
+  );
+
+  if (existingUser) {
+    if (existingUser.studno === editStudno.value) editErrors.value.studno = "Student number already exists.";
+    if (existingUser.email === editEmail.value) editErrors.value.email = "Email already exists.";
+  }
 
   if (Object.values(editErrors.value).some((err) => err)) return;
 
