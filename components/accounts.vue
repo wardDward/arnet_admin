@@ -35,7 +35,7 @@
         Add Account
       </button>
 
-      <input type="text" v-model="searchQuery" placeholder="Search by name or email"
+      <input type="text" v-model="searchQuery" placeholder="Search by student number or email"
         class="w-full md:w-[300px] border border-slate-300 px-3 py-1 rounded" />
     </div>
 
@@ -47,6 +47,10 @@
       </div>
       <hr />
       <form class="p-4" @submit.prevent="handleRegister">
+        <div class="flex flex-col mb-2">
+          <label class="text-sm">Student Number</label>
+          <input type="text" v-model="studno" class="w-full border border-slate-300 py-1 rounded-md px-2" />
+        </div>
         <div class="flex flex-col mb-2">
           <label class="text-sm">Firstname</label>
           <input type="text" v-model="firstname" class="w-full border border-slate-300 py-1 rounded-md px-2" />
@@ -81,6 +85,11 @@
       </div>
       <hr />
       <form class="p-4" @submit.prevent="handleEdit">
+        <div class="flex flex-col mb-2">
+          <label class="text-sm">Student Number</label>
+          <input type="text" v-model="editStudno" class="w-full border border-slate-300 py-1 rounded-md px-2" />
+          {{ editErrors.studno }}
+        </div>
         <div class="flex flex-col mb-2">
           <label class="text-sm">Firstname</label>
           <input type="text" v-model="editFirstname" class="w-full border border-slate-300 py-1 rounded-md px-2" />
@@ -118,6 +127,7 @@
     <table v-if="!isLoading" class="w-full text-sm text-left text-gray-500">
       <thead class="text-xs text-gray-700 uppercase bg-gray-50">
         <tr>
+          <th class="px-6 py-3">Student Number</th>
           <th class="px-6 py-3">Firstname</th>
           <th class="px-6 py-3">Lastname</th>
           <th class="px-6 py-3">Email</th>
@@ -126,6 +136,7 @@
       </thead>
       <tbody>
         <tr v-for="user in paginatedUsers" :key="user.id" class="bg-white border-b">
+          <td class="px-6 py-4">{{ user.studno }}</td>
           <td class="px-6 py-4">{{ user.firstname }}</td>
           <td class="px-6 py-4">{{ user.lastname }}</td>
           <td class="px-6 py-4">{{ user.email }}</td>
@@ -165,6 +176,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useAuth } from "@/composables/useAuth";
 
+const studno = ref("");
 const firstname = ref("");
 const lastname = ref("");
 const email = ref("");
@@ -178,16 +190,19 @@ const isLoading = ref(false);
 // Edit user state
 const showEditUserModal = ref(false);
 const userToEdit = ref<any>(null);
+const editStudno = ref("");
 const editFirstname = ref("");
 const editLastname = ref("");
 const editEmail = ref("");
 const editErrors = ref({
+  studno: "",
   firstname: "",
   lastname: "",
   email: "",
 });
 
 const errors = ref({
+  studno: "",
   firstname: "",
   lastname: "",
   email: "",
@@ -200,8 +215,9 @@ const itemsPerPage = 6;
 const { register, users, fetchUsers, deleteUser, updateUser } = useAuth();
 
 const handleRegister = async () => {
-  errors.value = { firstname: "", lastname: "", email: "", password: "" };
+  errors.value = { studno: "", firstname: "", lastname: "", email: "", password: "" };
 
+  if (!studno.value.trim()) errors.value.firstname = "Student number is required.";
   if (!firstname.value.trim()) errors.value.firstname = "Firstname is required.";
   if (!lastname.value.trim()) errors.value.lastname = "Lastname is required.";
   if (!email.value.trim()) errors.value.email = "Email is required.";
@@ -210,11 +226,12 @@ const handleRegister = async () => {
   if (Object.values(errors.value).some((err) => err)) return;
 
   try {
-    await register(email.value, password.value, firstname.value, lastname.value);
+    await register(email.value, password.value, firstname.value, lastname.value, studno.value, );
     firstname.value = "";
     lastname.value = "";
     email.value = "";
     password.value = "";
+    studno.value = "";
     toggleModal.value = false;
     await fetchUsers(); // refresh the list
   } catch (error: any) {
@@ -224,6 +241,7 @@ const handleRegister = async () => {
 
 const openEditModal = (user: any) => {
   userToEdit.value = user;
+  editStudno.value = user.studno;
   editFirstname.value = user.firstname;
   editLastname.value = user.lastname;
   editEmail.value = user.email;
@@ -232,8 +250,9 @@ const openEditModal = (user: any) => {
 
 const isMessage = ref(false)
 const handleEdit = async () => {
-  editErrors.value = { firstname: "", lastname: "", email: "" };
+  editErrors.value = { studno: "", firstname: "", lastname: "", email: "" };
 
+  if (!editStudno.value.trim()) editErrors.value.firstname = "Student number is required.";
   if (!editFirstname.value.trim()) editErrors.value.firstname = "Firstname is required.";
   if (!editLastname.value.trim()) editErrors.value.lastname = "Lastname is required.";
   if (!editEmail.value.trim()) editErrors.value.email = "Email is required.";
@@ -242,6 +261,7 @@ const handleEdit = async () => {
 
   try {
     await updateUser(userToEdit.value.id, {
+      studno: editStudno.value,
       firstname: editFirstname.value,
       lastname: editLastname.value,
       email: editEmail.value
@@ -289,8 +309,7 @@ const cancelDeleteUser = () => {
 const filteredUsers = computed(() => {
   const query = searchQuery.value.toLowerCase();
   return users.value.filter((user: any) =>
-    user.firstname.toLowerCase().includes(query) ||
-    user.lastname.toLowerCase().includes(query) ||
+    user.studno.toLowerCase().includes(query) ||
     user.email.toLowerCase().includes(query)
   );
 });

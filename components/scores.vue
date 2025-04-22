@@ -128,23 +128,6 @@ const preloadLessonTitles = (() => {
   };
 })();
 
-const userIdMap = new Map<string, string>();
-
-const generateStableFakeUserId = (realUid: string) => {
-  if (userIdMap.has(realUid)) return userIdMap.get(realUid)!;
-
-  // Create a "stable" number based on the UID's hash
-  let hash = 0;
-  for (let i = 0; i < realUid.length; i++) {
-    hash = realUid.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const stableNum = 1400 + (Math.abs(hash) % 600); // ensures between 1400-1999
-  const fakeUid = `21-${stableNum}`;
-  userIdMap.set(realUid, fakeUid);
-  return fakeUid;
-};
-
-
 const fetchScores = async () => {
   isLoading.value = true;
   try {
@@ -155,9 +138,8 @@ const fetchScores = async () => {
     const allScores: any[] = [];
 
     await Promise.all(profilesSnap.docs.map(async (userDoc) => {
-      const { firstname, lastname } = userDoc.data();
+      const { firstname, lastname, studno } = userDoc.data();
       const userId = userDoc.id;
-      const fakeUserId = generateStableFakeUserId(userId);
 
       const userName = `${firstname} ${lastname}`;
 
@@ -168,7 +150,7 @@ const fetchScores = async () => {
           const { score, status } = subDoc.data();
           if (score !== undefined && status !== undefined) {
             allScores.push({
-            userId: fakeUserId, // display fake ID only
+            userId: studno,
             name: userName,
             lesson: lessonTitleMap.get(subDoc.id) || subDoc.id,
             score,
