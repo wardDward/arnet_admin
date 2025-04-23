@@ -139,7 +139,7 @@
 <script lang="ts" setup>
 import { ref, onMounted, computed } from "vue";
 import { db } from "@/utils/firebase";
-import { collection, getDocs, setDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
 
 // State
 const toggleModal = ref(false);
@@ -292,6 +292,9 @@ const addSublesson = async () => {
     isLoading.value = false;
   }
 };
+
+
+
 
 // Prompt for deletion
 const promptDeleteSublesson = (sublesson: any) => {

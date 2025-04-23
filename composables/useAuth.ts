@@ -42,13 +42,14 @@ export const useAuth = () => {
     email: string,
     password: string,
     firstname: string,
-    lastname: string
+    lastname: string,
+    studno: string
   ) => {
     if (!email || !isValidEmail(email)) {
       console.error("Invalid email format");
       throw new Error("Invalid email address");
     }
-
+  
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -56,32 +57,35 @@ export const useAuth = () => {
         password
       );
       user.value = userCredential.user;
-
+  
       await setDoc(doc(db, "profile", user.value.uid), {
         firstname,
         lastname,
         email,
+        studno, // Add student number here
       });
-
-      userData.value = { firstname, lastname, email };
+  
+      userData.value = { firstname, lastname, email, studno };
       return user.value;
     } catch (error: any) {
       console.error("Registration failed:", error.message);
       throw error;
     }
   };
+  
 
   const fetchUsers = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "profile"));
       users.value = querySnapshot.docs.map((doc) => {
         const userData = doc.data();
-      return {
-        id: doc.id,
-        firstname: userData.firstname || "N/A",
-        lastname: userData.lastname || "N/A",
-        email: userData.email || "N/A",
-      };
+        return {
+          id: doc.id,
+          firstname: userData.firstname || "N/A",
+          lastname: userData.lastname || "N/A",
+          email: userData.email || "N/A",
+          studno: userData.studno || "N/A", // Add this line
+        };
       });
 
       console.log("Fetched users:", users.value);
