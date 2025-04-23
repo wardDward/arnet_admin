@@ -9,12 +9,14 @@
       <!-- Header + Search -->
       <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
         <h2 class="text-2xl font-bold">Student Scores</h2>
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search by student no. or student name..."
-          class="w-full sm:w-80 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-300"
-        />
+        <div class="flex flex-wrap items-center">
+          <input v-model="searchQuery" type="text" placeholder="Search by student no. or student name..."
+            class="w-full sm:w-80 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-green-300" />
+          <button @click="exportToExcel"
+            class="px-2 py-1 border border-green-600 text-green-600 rounded-full hover:bg-green-700 mt-4 ml-2 hover:text-white transition-colors mb-4 text-xs">
+            Export to Excel
+          </button>
+        </div>
       </div>
 
       <!-- Scores Table -->
@@ -30,24 +32,19 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="(record, index) in paginatedScores"
-              :key="index"
-              class="border-b hover:bg-gray-50 transition-colors"
-            >
+            <tr v-for="(record, index) in paginatedScores" :key="index"
+              class="border-b hover:bg-gray-50 transition-colors">
               <td class="p-3">{{ record.userId }}</td>
               <td class="p-3">{{ record.name }}</td>
               <td class="p-3">{{ record.lesson }}</td>
               <td class="p-3">{{ record.score }}</td>
               <td class="p-3">
-                <span
-                  :class="[ 
-                    'px-3 py-1 rounded-full text-sm font-medium',
-                    record.status === 'passed'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
-                  ]"
-                >
+                <span :class="[
+                  'px-3 py-1 rounded-full text-sm font-medium',
+                  record.status === 'passed'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                ]">
                   {{ record.status === 'passed' ? 'Passed' : `Failed` }}
                 </span>
               </td>
@@ -63,32 +60,20 @@
 
       <!-- Pagination Controls -->
       <div class="flex justify-between items-center mt-4">
-        <button 
-          @click="goToPage(currentPage - 1)"
-          :disabled="currentPage === 1"
-          class="px-4 py-2 bg-white text-black border rounded disabled:bg-gray-300"
-        >
+        <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+          class="px-4 py-2 bg-white text-black border rounded disabled:bg-gray-300">
           Previous
         </button>
         <div class="flex gap-2">
-          <button
-            v-for="page in totalPages"
-            :key="page"
-            @click="goToPage(page)"
-            :class="{
-              'bg-green-500 text-white': currentPage === page,
-              'bg-gray-200 text-black': currentPage !== page
-            }"
-            class="px-4 py-2 rounded"
-          >
+          <button v-for="page in totalPages" :key="page" @click="goToPage(page)" :class="{
+            'bg-green-500 text-white': currentPage === page,
+            'bg-gray-200 text-black': currentPage !== page
+          }" class="px-4 py-2 rounded">
             {{ page }}
           </button>
         </div>
-        <button 
-          @click="goToPage(currentPage + 1)"
-          :disabled="currentPage === totalPages"
-          class="px-4 py-2 bg-white text-black border rounded disabled:bg-gray-300"
-        >
+        <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages"
+          class="px-4 py-2 bg-white text-black border rounded disabled:bg-gray-300">
           Next
         </button>
       </div>
@@ -99,6 +84,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { db } from '@/utils/firebase';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const searchQuery = ref('');
 const scores = ref<any[]>([]);
@@ -108,6 +95,23 @@ const lessonTitleMap = new Map<string, string>();
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 
+const exportToExcel = () => {
+  const dataToExport = filteredScores.value.map(record => ({
+    'Student Number': record.userId,
+    'Name': record.name,
+    'Lesson Name': record.lesson,
+    'Score': record.score,
+    'Status': record.status === 'passed' ? 'Passed' : 'Failed',
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Scores');
+
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+  saveAs(blob, 'student_scores.xlsx');
+};
 // Cache lesson titles only once
 const preloadLessonTitles = (() => {
   let hasLoaded = false;
@@ -168,12 +172,12 @@ const fetchScores = async () => {
           const { score, status } = subDoc.data();
           if (score !== undefined && status !== undefined) {
             allScores.push({
-            userId: fakeUserId, // display fake ID only
-            name: userName,
-            lesson: lessonTitleMap.get(subDoc.id) || subDoc.id,
-            score,
-            status,
-          });
+              userId: fakeUserId, // display fake ID only
+              name: userName,
+              lesson: lessonTitleMap.get(subDoc.id) || subDoc.id,
+              score,
+              status,
+            });
           }
         });
       });
@@ -210,4 +214,3 @@ const filteredScores = computed(() =>
 
 onMounted(fetchScores);
 </script>
-
